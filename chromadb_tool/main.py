@@ -23,14 +23,15 @@ import asyncio
 import os
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 import chromadb
+import chromadb.api
 from openchadpy.tool_base import ToolBase
 
 logger = logging.getLogger(__name__)
 
 # Persistent clients cache to reuse client instances per db_path
-_client_cache: Dict[str, chromadb.PersistentClient] = {}
+_client_cache: Dict[str, chromadb.api.ClientAPI] = {}
 _cache_lock = threading.Lock()
 
 # Per-database locks to prevent concurrent write/read race conditions
@@ -160,6 +161,9 @@ class Tool(ToolBase):
             collections = client.list_collections()
             return {"collections": [c.name for c in collections]}
 
+        if not collection_name:
+            return {"error": f"collection_name is required for action '{action}'"}
+
         if action == "delete_collection":
             try:
                 client.delete_collection(name=collection_name)
@@ -241,7 +245,7 @@ class Tool(ToolBase):
         else:
             return {"error": f"Unknown action '{action}'"}
 
-    def _serialize_results(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def _serialize_results(self, results: Mapping[str, Any]) -> Dict[str, Any]:
         # Handle formatting to ensure correct JSON serialization of numpy arrays or other types
         serialized = {}
         for k, v in results.items():
